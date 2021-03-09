@@ -1,0 +1,61 @@
+public function taxes(Request $request)
+{
+    try {
+        $search_data = $request->id;
+        //Checking did we get bin from view
+        $output = (new GetData\GetDataApi($search_data))->get_adata_api_data();
+        $output = [
+            'data'    => $output
+        ];
+        return response()->json($output);
+    } catch (\Exception $e) {
+        Log::error('Error => '.$e->getMessage().'; Location => '. $e->getFile(). '; Line => '.$e->getLine());
+        return response()->json(null);
+    }
+}
+
+function __construct($code)
+{
+    $this->code = $code;
+}
+public function get_adata_api_data()
+{
+    $context      = stream_context_create(
+        [
+            'http' => [
+                'method'           => 'GET',
+                'content'          => "",
+                'protocol_version' => 1.1,
+                'timeout'          => 55,
+                'ignore_errors'    => true,
+            ],
+            'ssl'  => [
+                'verify_peer' => false,
+            ],
+        ]
+    );
+    $api_address  = new ApiAddress();
+    $search_input = urlencode($this->code);
+    try {
+        $response = file_get_contents(
+            env('COUNTERPARTY_API', $api_address->GetAddress()) . "/api/taxData/token?iin={$search_input}",
+            false, $context
+        );
+        return json_decode(
+            json_encode(
+                [
+                    'success' => true,
+                    'data'    => json_decode($response),
+                ]
+            )
+        );
+    } catch (\Exception $e) {
+        return json_decode(
+            json_encode(
+                [
+                    'success' => false
+                ]
+            )
+        );
+    }
+}
